@@ -100,7 +100,9 @@ h1{
   -webkit-user-select:none;
 }
 .tile{
+  -webkit-appearance:none;
   appearance:none;
+  -webkit-text-fill-color:currentColor;
   border:0;
   margin:0;
   padding:0;
@@ -190,7 +192,7 @@ h1{
 
 /* Overlays */
 .overlay{
-  position:fixed;inset:0;
+  position:fixed;top:0;right:0;bottom:0;left:0;
   background:rgba(20,32,30,.55);
   display:none;
   align-items:center;
@@ -335,7 +337,15 @@ const THEMES = [
 
 /* ===== Date (Eastern time) ===== */
 function easternISO(){
-  return new Date().toLocaleDateString("en-CA",{timeZone:"America/New_York"});
+  // Build YYYY-MM-DD from separate parts so it works the same on every browser
+  try{
+    const parts = new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+    const get = t => (parts.find(p => p.type === t) || {}).value;
+    const iso = get("year") + "-" + get("month") + "-" + get("day");
+    if(/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  }catch(e){}
+  // Fallback for very old browsers: approximate Eastern time (UTC-5)
+  return new Date(Date.now() - 5*3600000).toISOString().slice(0,10);
 }
 function dayNum(iso){
   const [y,m,d] = iso.split("-").map(Number);
@@ -480,6 +490,7 @@ const niceDate = new Date(TODAY + "T12:00:00Z").toLocaleDateString("en-US",
 el("kicker").textContent = niceDate;
 
 const tiles = [];
+const allTiles = () => [].concat.apply([], tiles);
 for(let y = 0; y < SIZE; y++){
   tiles.push([]);
   for(let x = 0; x < SIZE; x++){
@@ -626,7 +637,7 @@ function markFound(w, cells){
   store.day.found = found;
   save();
   clearTimeout(hintTimer);
-  tiles.flat().forEach(t => t.classList.remove("hint"));
+  allTiles().forEach(t => t.classList.remove("hint"));
   clearSel();
   if(foundCount() === WORDS.length){
     setStatus(defaultStatus(), "good");
@@ -702,7 +713,7 @@ el("hintBtn").addEventListener("click", () => {
   clearSel();
   const w = left[hintIndex++ % left.length];
   const [hx, hy] = PLACED[w][0];
-  tiles.flat().forEach(t => t.classList.remove("hint"));
+  allTiles().forEach(t => t.classList.remove("hint"));
   void tiles[hy][hx].offsetWidth; // restart the glow
   tiles[hy][hx].classList.add("hint");
   clearTimeout(hintTimer);
